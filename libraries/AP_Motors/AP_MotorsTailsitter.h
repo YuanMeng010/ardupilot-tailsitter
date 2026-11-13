@@ -10,6 +10,9 @@
 class AP_MotorsTailsitter : public AP_MotorsMulticopter {
 public:
 
+    // 2.1 横滚矢量增益：0 关闭，1 满舵
+    void set_roll_vect_gain(float gain) { _roll_vect_gain = gain; }
+
     /// Constructor
     AP_MotorsTailsitter(uint16_t speed_hz = AP_MOTORS_SPEED_DEFAULT);
 
@@ -36,6 +39,9 @@ public:
     void set_min_throttle(float val) {_external_min_throttle = val;}
 
 protected:
+    // 2.2横滚增益
+    float _roll_vect_gain = 1.0f;
+
     // calculate motor outputs
     void output_armed_stabilizing() override;
 
@@ -48,6 +54,8 @@ protected:
     float _throttle; // 0..1
     float _tilt_left;  // -1..1
     float _tilt_right;  // -1..1
+    float _tilt_l2;
+    float _tilt_r2;
     float _thrust_left;  // 0..1
     float _thrust_right;  // 0..1
 

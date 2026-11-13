@@ -109,7 +109,8 @@ void AP_MotorsTailsitter::output_to_motors()
 
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left*SERVO_OUTPUT_RANGE);
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right*SERVO_OUTPUT_RANGE);
-
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorFront2Left, _tilt_l2*SERVO_OUTPUT_RANGE);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorFront2Right, _tilt_r2*SERVO_OUTPUT_RANGE);
 }
 
 // get_motor_mask - returns a bitmask of which outputs are being used for motors (1 means being used)
@@ -171,8 +172,12 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     }
 
     // calculate left and right throttle outputs
-    _thrust_left  = throttle_thrust + roll_thrust * 0.5f;
-    _thrust_right = throttle_thrust - roll_thrust * 0.5f;
+
+    // 1.取消油门差动
+    //  _thrust_left  = throttle_thrust + roll_thrust * 0.5f;
+    //  _thrust_right = throttle_thrust - roll_thrust * 0.5f;
+    _thrust_left  = throttle_thrust;
+    _thrust_right = throttle_thrust;
 
     thrust_max = MAX(_thrust_right,_thrust_left);
     thrust_min = MIN(_thrust_right,_thrust_left);
@@ -210,8 +215,14 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     }
 
     // thrust vectoring
-    _tilt_left  = pitch_thrust - yaw_thrust;
-    _tilt_right = pitch_thrust + yaw_thrust;
+    // _tilt_left  = pitch_thrust - yaw_thrust;
+    // _tilt_right = pitch_thrust + yaw_thrust;
+    // 输出
+    _tilt_left  = pitch_thrust - yaw_thrust - roll_thrust * _roll_vect_gain;
+    _tilt_right = pitch_thrust + yaw_thrust + roll_thrust * _roll_vect_gain;
+
+    _tilt_l2 = pitch_thrust - yaw_thrust - roll_thrust * _roll_vect_gain;
+    _tilt_r2 = pitch_thrust + yaw_thrust + roll_thrust * _roll_vect_gain;
 }
 
 // output_test_seq - spin a motor at the pwm value specified
