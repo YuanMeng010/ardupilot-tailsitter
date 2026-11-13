@@ -113,6 +113,9 @@ public:
 
     AP_MotorsTailsitter* tailsitter_motors;
 
+    //3.1横滚轴参数
+    AP_Float roll_vec_gain;
+
 private:
 
     // Tailsitter specific log message

@@ -24,6 +24,15 @@
 
 const AP_Param::GroupInfo Tailsitter::var_info[] = {
 
+    // 横滚增益参数
+    // @Param: VECRLL
+    // @DisplayName: Tailsitter vector roll gain
+    // @Description: Gain applied to VTOL roll control when output to the vectoring servos. 0 disables. Effective gain is VECRLL * Q_TAILSIT_VHGAIN
+    // @Range: 0 2
+    // @Increment: 0.01
+    // @User: Advanced
+    AP_GROUPINFO("VECRLL", 23, Tailsitter, roll_vec_gain, 1),
+
     // @Param: ENABLE
     // @DisplayName: Enable Tailsitter
     // @Values: 0:Disable, 1:Enable, 2:Enable Always
@@ -284,6 +293,11 @@ bool Tailsitter::active(void)
  */
 void Tailsitter::output(void)
 {
+    //参数显示
+    if (tailsitter_motors != nullptr) {
+        tailsitter_motors->set_roll_vect_gain(roll_vec_gain);
+    }
+
     if (!enabled() || quadplane.motor_test.running || !quadplane.initialised) {
         // if motor test is running we don't want to overwrite it with output_motor_mask or motors_output
         return;
@@ -454,11 +468,15 @@ void Tailsitter::output(void)
     // No tilt output unless hover gain is set
     float tilt_left = 0.0;
     float tilt_right = 0.0;
+    float tilt_l2 = 0.0;
+    float tilt_r2 = 0.0;
 
     if (vectored_hover_gain > 0) {
         // thrust vectoring VTOL modes
         tilt_left = SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorLeft);
         tilt_right = SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorRight);
+        tilt_l2 = SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorFront2Left);
+        tilt_r2 = SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorFront2Right);
         /*
           apply extra elevator when at high pitch errors, using a
           power law. This allows the motors to point straight up for
@@ -474,12 +492,21 @@ void Tailsitter::output(void)
         }
         tilt_left  = extra_elevator + tilt_left * vectored_hover_gain;
         tilt_right = extra_elevator + tilt_right * vectored_hover_gain;
+        tilt_l2  = extra_elevator + tilt_l2 * vectored_hover_gain;
+        tilt_r2 = extra_elevator + tilt_r2 * vectored_hover_gain;
     }
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, tilt_left);
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, tilt_right);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorFront2Left, tilt_l2);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorFront2Right, tilt_r2);
 
     // Check for saturated limits
-    bool tilt_lim = _is_vectored && ((fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_tiltMotorLeft)) >= SERVO_MAX) || (fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_tiltMotorRight)) >= SERVO_MAX));
+    bool tilt_lim = _is_vectored && (
+    (fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_tiltMotorLeft)) >= SERVO_MAX) ||
+    (fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_tiltMotorRight)) >= SERVO_MAX)||
+    (fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_tiltMotorFront2Left)) >= SERVO_MAX) ||
+    (fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_tiltMotorFront2Right)) >= SERVO_MAX));
+  
     bool roll_lim = _have_rudder && (fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_rudder)) >= SERVO_MAX);
     bool pitch_lim = _have_elevator && (fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_elevator)) >= SERVO_MAX);
     bool yaw_lim = _have_aileron && (fabsf(SRV_Channels::get_output_scaled(SRV_Channel::Function::k_aileron)) >= SERVO_MAX);
@@ -511,7 +538,7 @@ void Tailsitter::output(void)
     SRV_Channels::set_output_scaled(SRV_Channel::k_vtail_right, elevator_mix - rudder_mix);
     SRV_Channels::set_output_scaled(SRV_Channel::k_vtail_left, elevator_mix + rudder_mix);
 
-    if (roll_lim) {
+    if (roll_lim || tilt_lim) {
         motors->limit.roll = true;
     }
     if (pitch_lim || tilt_lim) {
@@ -781,10 +808,17 @@ void Tailsitter::speed_scaling(void)
         SRV_Channel::Function::k_elevator,
         SRV_Channel::Function::k_rudder,
         SRV_Channel::Function::k_tiltMotorLeft,
-        SRV_Channel::Function::k_tiltMotorRight};
+        SRV_Channel::Function::k_tiltMotorRight,
+        SRV_Channel::Function::k_tiltMotorFront2Left,
+        SRV_Channel::Function::k_tiltMotorFront2Right};
+
     for (uint8_t i=0; i<ARRAY_SIZE(functions); i++) {
         float v = SRV_Channels::get_output_scaled(functions[i]);
-        if ((functions[i] == SRV_Channel::Function::k_tiltMotorLeft) || (functions[i] == SRV_Channel::Function::k_tiltMotorRight)) {
+        if ((functions[i] == SRV_Channel::Function::k_tiltMotorLeft) ||
+         (functions[i] == SRV_Channel::Function::k_tiltMotorRight)  ||
+            (functions[i] == SRV_Channel::Function::k_tiltMotorFront2Left) ||
+            (functions[i] == SRV_Channel::Function::k_tiltMotorFront2Right)
+        ) {
             // always apply throttle scaling to tilts
             v *= throttle_scaler;
         } else {
