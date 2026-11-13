@@ -195,6 +195,8 @@ public:
         k_rcin15_mapped         = 154,
         k_rcin16_mapped         = 155,
         k_lift_release          = 156,
+        k_tiltMotorFront2Left   = 157,
+        k_tiltMotorFront2Right  = 158,
         k_motor13               = 160,
         k_motor14               = 161,
         k_motor15               = 162,

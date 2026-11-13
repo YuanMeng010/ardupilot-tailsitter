@@ -121,6 +121,8 @@ const AP_Param::GroupInfo SRV_Channel::var_info[] = {
     // @Values{Plane, Copter, Rover}: 73:ThrottleLeft,74:ThrottleRight
     // @Values: 75:TiltMotorFrontLeft,76:TiltMotorFrontRight
     // @Values{Plane, Copter}: 75:TiltMotorFrontLeft,76:TiltMotorFrontRight
+    // @Values: 157:TiltMotorFront2Left,158:TiltMotorFront2Right
+    // @Values{Plane}: 157:TiltMotorFront2Left,158:TiltMotorFront2Right
     // @Values: 77:ElevonLeft,78:ElevonRight
     // @Values{Plane}: 77:ElevonLeft,78:ElevonRight
     // @Values: 79:VTailLeft,80:VTailRight
