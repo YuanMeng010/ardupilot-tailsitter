@@ -1062,6 +1062,8 @@ void QuadPlane::run_z_controller(void)
         last_pidz_init_ms = now;
     }
     last_pidz_active_ms = now;
+    //泄露积分
+    tailsitter.apply_throttle_i_leak();
     pos_control->D_update_controller();
 }
 

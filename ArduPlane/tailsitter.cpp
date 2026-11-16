@@ -33,6 +33,24 @@ const AP_Param::GroupInfo Tailsitter::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("VECRLL", 23, Tailsitter, roll_vec_gain, 1),
 
+    // 油门泄漏积分参数（ILMI：泄露下限值，ILTC泄露积分时间常数）
+    // @Param: ILMI
+    // @DisplayName: Tailsitter throttle I-term leak minimum
+    // @Description: Point below which the vertical acceleration (throttle) controller I-term will not leak down. The I-term is in normalised thrust, so 0.05 keeps 5% of thrust authority. 0 lets the I-term leak all the way to zero.
+    // @Range: 0 1
+    // @Increment: 0.01
+    // @User: Advanced
+    AP_GROUPINFO("ILMI", 24, Tailsitter, throttle_i_lmi, 0.05f),
+
+    // @Param: ILTC
+    // @DisplayName: Tailsitter throttle I-term leak time constant
+    // @Description: Time constant in seconds used to leak the vertical acceleration (throttle) controller I-term back towards the leak minimum. 0 disables the leak.
+    // @Units: s
+    // @Range: 0 10
+    // @Increment: 0.1
+    // @User: Advanced
+    AP_GROUPINFO("ILTC", 25, Tailsitter, throttle_i_ltc, 0),
+
     // @Param: ENABLE
     // @DisplayName: Enable Tailsitter
     // @Values: 0:Disable, 1:Enable, 2:Enable Always
@@ -200,6 +218,8 @@ static const struct AP_Param::defaults_table_struct defaults_table_tailsitter[] 
     { "Q_P_NE_VEL_D",        0.25},
     
 };
+
+
 
 Tailsitter::Tailsitter(QuadPlane& _quadplane, AP_MotorsMulticopter*& _motors):quadplane(_quadplane),motors(_motors)
 {
@@ -548,6 +568,42 @@ void Tailsitter::output(void)
         motors->limit.yaw = true;
     }
 
+}
+
+/*
+  油门（垂直加速度环）积分泄漏。
+ */
+void Tailsitter::apply_throttle_i_leak()
+{
+    //失效处理
+    if (!enabled()) {
+        return;
+    }
+    //TC GCS
+    const float tc = throttle_i_ltc;
+    if (!is_positive(tc)) {
+        return;
+    }
+    const float dt = quadplane.pos_control->get_dt_s();
+    if (!is_positive(dt)) {
+        return;
+    }
+
+    const float leak_min = MAX(float(throttle_i_lmi), 0.0f);
+    // 衰减系数
+    const float decay = dt / (dt + tc);
+    AC_PID &pid = quadplane.pos_control->D_get_accel_pid();
+
+    float i = pid.get_i();
+    if (i > leak_min) {
+        i = leak_min + (i - leak_min) * decay;
+    } else if (i < -leak_min) {
+        i = -leak_min + (i + leak_min) * decay;
+    } else {
+        // 下限以内不减，保住基础配平
+        return;
+    }
+    pid.set_integrator(i);
 }
 
 

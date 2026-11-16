@@ -69,6 +69,9 @@ public:
 
     // Write tailsitter specific log
     void write_log();
+    
+        //抗饱和计算：油门 I 项泄漏
+    void apply_throttle_i_leak();
 
     // tailsitter speed scaler
     float last_spd_scaler = 1.0f; // used to slew rate limiting with TAILSITTER_GSCL_ATT_THR option
@@ -115,6 +118,11 @@ public:
 
     //3.1横滚轴参数
     AP_Float roll_vec_gain;
+    //泄露积分下限/泄露时间常数
+    AP_Float throttle_i_lmi;
+    AP_Float throttle_i_ltc;
+
+
 
 private:
 
